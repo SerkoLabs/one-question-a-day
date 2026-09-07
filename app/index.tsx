@@ -1,8 +1,10 @@
 import { Link, Redirect } from 'expo-router';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { StateCard } from '@/components/StateCard';
 import { useSessionBootstrap } from '@/features/auth/session-provider';
+import { supabase } from '@/lib/supabase/client';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 export default function WelcomeScreen() {
@@ -10,6 +12,14 @@ export default function WelcomeScreen() {
 
   if (bootstrap.status === 'ready') return <Redirect href="/(tabs)" />;
   if (bootstrap.status === 'onboarding') return <Redirect href="/onboarding" />;
+
+  const recoverFromSessionError = async () => {
+    if (bootstrap.status !== 'error') return;
+    if (bootstrap.session) {
+      await supabase.auth.signOut();
+    }
+    await bootstrap.refreshProfile();
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -57,10 +67,16 @@ export default function WelcomeScreen() {
         ) : null}
 
         {bootstrap.status === 'error' ? (
-          <StateCard title="Hesap durumu yüklenemedi" description={bootstrap.error} tone="notice" />
+          <View style={styles.actions}>
+            <StateCard title="Hesap durumu yüklenemedi" description={bootstrap.error} tone="notice" />
+            <PrimaryButton label="Güvenli şekilde yeniden başlat" onPress={recoverFromSessionError} />
+            <Text style={styles.footer}>
+              Mevcut oturum temizlenir; sunucudaki günlük cevapların silinmez.
+            </Text>
+          </View>
         ) : null}
 
-        {bootstrap.status !== 'loading' ? (
+        {bootstrap.status === 'signed-out' ? (
           <View style={styles.actions}>
             <Link href="/(auth)/sign-up" style={styles.primaryLink} accessibilityRole="button">
               Hemen Başla
@@ -148,5 +164,5 @@ const styles = StyleSheet.create({
   signInRow: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   signInText: { color: colors.inkMuted, fontSize: 14 },
   signInLink: { color: colors.green, fontSize: 14, fontWeight: '800' },
-  footer: { color: colors.inkMuted, fontSize: 12, textAlign: 'center' },
+  footer: { color: colors.inkMuted, textAlign: 'center', fontSize: 12, lineHeight: 18 },
 });
