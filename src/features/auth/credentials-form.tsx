@@ -13,7 +13,7 @@ const schema = z.object({
 
 type Props = {
   submitLabel: string;
-  onSubmit: (values: { email: string; password: string }) => Promise<void>;
+  onSubmit: (values: { email: string; password: string }) => Promise<string | void>;
 };
 
 export function CredentialsForm({ submitLabel, onSubmit }: Props) {
@@ -21,9 +21,11 @@ export function CredentialsForm({ submitLabel, onSubmit }: Props) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
+    setSuccess(null);
     const parsed = schema.safeParse({ email, password });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Bilgileri kontrol et.');
@@ -32,7 +34,8 @@ export function CredentialsForm({ submitLabel, onSubmit }: Props) {
 
     setBusy(true);
     try {
-      await onSubmit(parsed.data);
+      const message = await onSubmit(parsed.data);
+      if (message) setSuccess(message);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'İşlem tamamlanamadı. Tekrar dene.');
     } finally {
@@ -71,6 +74,7 @@ export function CredentialsForm({ submitLabel, onSubmit }: Props) {
       </View>
 
       {error ? <StateCard tone="notice" title="İşlem tamamlanamadı" description={error} /> : null}
+      {success ? <StateCard title="E-postanı kontrol et" description={success} /> : null}
       <PrimaryButton label={busy ? 'Bekle…' : submitLabel} onPress={submit} disabled={busy} />
     </View>
   );
