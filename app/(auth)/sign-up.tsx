@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { CredentialsForm } from '@/features/auth/credentials-form';
 import { supabase } from '@/lib/supabase/client';
-import { colors, spacing } from '@/theme/tokens';
+import { colors } from '@/theme/tokens';
 
 export default function SignUpScreen() {
   return (
@@ -25,9 +25,7 @@ export default function SignUpScreen() {
           }
 
           if (!data.session) {
-            throw new Error(
-              'Hesabın oluşturuldu. E-posta doğrulaması açıksa gelen kutundaki bağlantıyı onayladıktan sonra giriş yap.',
-            );
+            return 'Hesabın oluşturuldu. E-posta doğrulaması açıksa gelen kutundaki bağlantıyı onayladıktan sonra giriş yap.';
           }
 
           router.replace('/');
