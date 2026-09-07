@@ -16,21 +16,13 @@ export default function SettingsScreen() {
   const profile = bootstrap.status === 'ready' ? bootstrap.profile : null;
   const userId = bootstrap.status === 'ready' ? bootstrap.session.user.id : '';
   const [timezone, setTimezone] = useState(profile?.timezone ?? '');
-  const [aiConsent, setAiConsent] = useState(false);
+  const [aiConsent, setAiConsent] = useState(profile?.ai_analysis_consent ?? false);
 
   useEffect(() => {
-    if (profile?.timezone != null) setTimezone(profile.timezone);
-  }, [profile?.timezone]);
-
-  useEffect(() => {
-    if (!userId) return;
-    void supabase
-      .from('profiles')
-      .select('ai_analysis_consent')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => setAiConsent(Boolean(data?.ai_analysis_consent)));
-  }, [userId]);
+    if (!profile) return;
+    setTimezone(profile.timezone ?? '');
+    setAiConsent(profile.ai_analysis_consent);
+  }, [profile]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
