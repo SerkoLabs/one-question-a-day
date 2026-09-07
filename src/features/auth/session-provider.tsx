@@ -13,11 +13,14 @@ import type { Session } from '@supabase/supabase-js';
 import { clearProtectedQueryCache } from '@/lib/query/client';
 import { supabase } from '@/lib/supabase/client';
 
-type ProfileBootstrap = {
+export type ProfileBootstrap = {
   id: string;
   locale: string;
   timezone: string | null;
   onboarding_completed_at: string | null;
+  ai_analysis_consent: boolean;
+  reminder_enabled: boolean;
+  reminder_local_time: string | null;
 };
 
 type BootstrapState =
@@ -36,7 +39,9 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 async function fetchProfile(userId: string): Promise<ProfileBootstrap> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, locale, timezone, onboarding_completed_at')
+    .select(
+      'id, locale, timezone, onboarding_completed_at, ai_analysis_consent, reminder_enabled, reminder_local_time',
+    )
     .eq('id', userId)
     .single();
 
