@@ -12,6 +12,7 @@
     "lint": "expo lint",
     "test": "jest",
     "test:ci": "jest --ci --runInBand",
+    "test:integration": "jest tests/integration --runInBand",
     "doctor": "npx expo-doctor",
     "build:smoke": "expo export --platform web --output-dir dist-ci"
   },
