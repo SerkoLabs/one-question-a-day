@@ -1,105 +1,130 @@
+import { Link } from 'expo-router';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-export default function FoundationScreen() {
+import { colors, radius, spacing } from '@/theme/tokens';
+
+export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>ONE QUESTION A DAY</Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brandMark}>
+            <Text style={styles.brandMarkText}>1</Text>
+          </View>
+          <Text style={styles.brand}>ONE QUESTION A DAY</Text>
         </View>
 
         <View style={styles.hero}>
           <Text accessibilityRole="header" style={styles.title}>
-            Her gün bir soru.{`\n`}Zaman içinde kendini gör.
+            Her gün{`\n`}bir soru.{`\n`}Zaman içinde{`\n`}kendini gör.
           </Text>
           <Text style={styles.subtitle}>
-            Küçük bir günlük alışkanlık. Aylar sonra kendi düşüncelerinin değişimini görebileceğin özel bir zaman çizelgesi.
+            Bir yıl sonra bugünkü düşüncelerine bak. Nelerin değiştiğini, nelerin hep seninle kaldığını gör.
           </Text>
         </View>
 
-        <View style={styles.questionCard} accessible accessibilityLabel="Örnek günlük soru">
-          <Text style={styles.eyebrow}>BUGÜNÜN SORUSU</Text>
-          <Text style={styles.question}>
-            Son zamanlarda hayatında değiştirmek isteyip de sürekli ertelediğin şey ne?
-          </Text>
-          <Text style={styles.note}>Uygulama temeli hazırlanıyor.</Text>
+        <View style={styles.previewCard} accessible accessibilityLabel="Uygulamanın ana vaadi">
+          <Text style={styles.previewEyebrow}>365 GÜNLÜK YOLCULUK</Text>
+          <Text style={styles.previewTitle}>Bir yıl sonra, kendinin yıllık raporuna bak.</Text>
+          <View style={styles.previewStats}>
+            <View style={styles.statPill}>
+              <Text style={styles.statNumber}>1</Text>
+              <Text style={styles.statLabel}>soru / gün</Text>
+            </View>
+            <View style={styles.statPill}>
+              <Text style={styles.statNumber}>30</Text>
+              <Text style={styles.statLabel}>günde ilk ayna</Text>
+            </View>
+            <View style={styles.statPill}>
+              <Text style={styles.statNumber}>365</Text>
+              <Text style={styles.statLabel}>günde portre</Text>
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.footer}>Özel • Yargısız • Teşhis koymaz</Text>
+        <View style={styles.actions}>
+          <Link href="/(auth)/sign-up" style={styles.primaryLink} accessibilityRole="button">
+            Hemen Başla
+          </Link>
+          <View style={styles.signInRow}>
+            <Text style={styles.signInText}>Zaten hesabın var mı?</Text>
+            <Link href="/(auth)/sign-in" style={styles.signInLink}>
+              Giriş yap
+            </Link>
+          </View>
+          <Text style={styles.footer}>Özel • Yargısız • Teşhis koymaz</Text>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F1E8',
-  },
+  safeArea: { flex: 1, backgroundColor: colors.background },
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 28,
-    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.xl,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#C9D8C7',
-    backgroundColor: '#EEF4EC',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  brandMark: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.pill,
+    backgroundColor: colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badgeText: {
-    color: '#335846',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-  },
-  hero: {
-    gap: 16,
-  },
+  brandMarkText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  brand: { color: colors.inkSoft, fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
+  hero: { gap: spacing.md, flex: 1, justifyContent: 'center' },
   title: {
-    color: '#173B2D',
-    fontSize: 42,
-    lineHeight: 47,
+    color: colors.ink,
+    fontSize: 45,
+    lineHeight: 48,
     fontWeight: '700',
-    letterSpacing: -1.4,
+    letterSpacing: -1.8,
   },
-  subtitle: {
-    color: '#596760',
-    fontSize: 17,
-    lineHeight: 26,
-    maxWidth: 560,
-  },
-  questionCard: {
-    backgroundColor: '#FFFCF7',
-    borderRadius: 28,
-    padding: 24,
-    gap: 14,
+  subtitle: { color: colors.inkSoft, fontSize: 17, lineHeight: 25, maxWidth: 520 },
+  previewCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: '#E7DED1',
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
-  eyebrow: {
-    color: '#A06E4B',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.4,
+  previewEyebrow: { color: colors.peachInk, fontWeight: '800', fontSize: 11, letterSpacing: 1.2 },
+  previewTitle: { color: colors.ink, fontWeight: '700', fontSize: 20, lineHeight: 27 },
+  previewStats: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+    backgroundColor: colors.greenSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  question: {
-    color: '#26352E',
-    fontSize: 26,
-    lineHeight: 34,
-    fontWeight: '600',
-  },
-  note: {
-    color: '#8B928D',
-    fontSize: 13,
-  },
-  footer: {
-    color: '#74827A',
+  statNumber: { color: colors.green, fontSize: 15, fontWeight: '800' },
+  statLabel: { color: colors.inkSoft, fontSize: 12, fontWeight: '600' },
+  actions: { gap: spacing.md },
+  primaryLink: {
+    minHeight: 54,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    backgroundColor: colors.green,
+    color: '#FFFFFF',
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: 16,
+    fontWeight: '800',
   },
+  signInRow: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  signInText: { color: colors.inkMuted, fontSize: 14 },
+  signInLink: { color: colors.green, fontSize: 14, fontWeight: '800' },
+  footer: { color: colors.inkMuted, fontSize: 12, textAlign: 'center' },
 });
