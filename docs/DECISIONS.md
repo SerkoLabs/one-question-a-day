@@ -48,3 +48,17 @@ Reason: avoid an unused state layer while preserving a clear extension point.
 - annual: 365 days + at least 80 responses across at least 6 months.
 
 Below threshold, show insufficient data rather than generate a speculative portrait.
+
+## ADR-008 — Onboarding controls may share one route
+**Status:** accepted — 2026-09-07
+
+The timezone, reminder intent and AI-consent decisions described as sequential onboarding states in `docs/USER_FLOWS.md` are implemented in the first shell as one scrollable onboarding route. The semantic order and all required decisions remain visible, and onboarding is still committed atomically through the server function.
+
+Reason: this reduces navigation/state complexity without changing the product promise, collected data, consent requirements or acceptance criteria. If usability testing shows overload, the same fields can be split back into multiple route steps without schema changes.
+
+## ADR-009 — Expo SDK 57 dependency baseline follows current first-party template
+**Status:** accepted — 2026-09-07
+
+The implementation follows the current Expo SDK 57 default-template baseline observed on 2026-09-07: React Native `0.87.1`, React `19.2.3`, Expo `~57.0.9`, Router `~57.0.9`, AsyncStorage `2.2.0`, SecureStore `~57.0.1` and screens `~4.27.0`.
+
+The earlier `docs/ARCHITECTURE.md` wording that says RN `0.86` is stale and must not override the verified implementation baseline. It will be corrected at the next full architecture-document synchronization pass.
