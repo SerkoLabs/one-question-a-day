@@ -52,21 +52,29 @@ export function SessionProvider({ children }: PropsWithChildren) {
     error: null,
   });
   const lastUserIdRef = useRef<string | null>(null);
+  const bootstrapEpochRef = useRef(0);
 
   const bootstrap = useCallback(async (session: Session | null) => {
+    const epoch = ++bootstrapEpochRef.current;
     const nextUserId = session?.user.id ?? null;
+
     if (lastUserIdRef.current !== nextUserId) {
       await clearProtectedQueryCache();
+      if (epoch !== bootstrapEpochRef.current) return;
       lastUserIdRef.current = nextUserId;
     }
 
     if (!session) {
-      setState({ status: 'signed-out', session: null, profile: null, error: null });
+      if (epoch === bootstrapEpochRef.current) {
+        setState({ status: 'signed-out', session: null, profile: null, error: null });
+      }
       return;
     }
 
     try {
       const profile = await fetchProfile(session.user.id);
+      if (epoch !== bootstrapEpochRef.current || session.user.id !== lastUserIdRef.current) return;
+
       setState({
         status: profile.onboarding_completed_at ? 'ready' : 'onboarding',
         session,
@@ -74,6 +82,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         error: null,
       });
     } catch {
+      if (epoch !== bootstrapEpochRef.current) return;
       setState({
         status: 'error',
         session,
@@ -86,8 +95,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let mounted = true;
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (mounted) void bootstrap(data.session);
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return;
+      if (error) {
+        setState({
+          status: 'error',
+          session: null,
+          profile: null,
+          error: 'Oturum bilgisi okunamadı. Uygulamayı yeniden deneyebilirsin.',
+        });
+        return;
+      }
+      void bootstrap(data.session);
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -97,12 +116,22 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     return () => {
       mounted = false;
+      bootstrapEpochRef.current += 1;
       data.subscription.unsubscribe();
     };
   }, [bootstrap]);
 
   const refreshProfile = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      setState({
+        status: 'error',
+        session: null,
+        profile: null,
+        error: 'Oturum bilgisi okunamadı. Uygulamayı yeniden deneyebilirsin.',
+      });
+      return;
+    }
     await bootstrap(data.session);
   }, [bootstrap]);
 
