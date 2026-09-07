@@ -1,5 +1,13 @@
 import type { PropsWithChildren } from 'react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { Session } from '@supabase/supabase-js';
 
 import { clearProtectedQueryCache } from '@/lib/query/client';
@@ -43,8 +51,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
     profile: null,
     error: null,
   });
+  const lastUserIdRef = useRef<string | null>(null);
 
   const bootstrap = useCallback(async (session: Session | null) => {
+    const nextUserId = session?.user.id ?? null;
+    if (lastUserIdRef.current !== nextUserId) {
+      await clearProtectedQueryCache();
+      lastUserIdRef.current = nextUserId;
+    }
+
     if (!session) {
       setState({ status: 'signed-out', session: null, profile: null, error: null });
       return;
@@ -75,9 +90,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
       if (mounted) void bootstrap(data.session);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      if (event === 'SIGNED_OUT') void clearProtectedQueryCache();
       void bootstrap(session);
     });
 
