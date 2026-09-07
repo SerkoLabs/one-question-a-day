@@ -1,9 +1,16 @@
-import { Link } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Link, Redirect } from 'expo-router';
+import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+import { StateCard } from '@/components/StateCard';
+import { useSessionBootstrap } from '@/features/auth/session-provider';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 export default function WelcomeScreen() {
+  const bootstrap = useSessionBootstrap();
+
+  if (bootstrap.status === 'ready') return <Redirect href="/(tabs)" />;
+  if (bootstrap.status === 'onboarding') return <Redirect href="/onboarding" />;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -42,18 +49,31 @@ export default function WelcomeScreen() {
           </View>
         </View>
 
-        <View style={styles.actions}>
-          <Link href="/(auth)/sign-up" style={styles.primaryLink} accessibilityRole="button">
-            Hemen Başla
-          </Link>
-          <View style={styles.signInRow}>
-            <Text style={styles.signInText}>Zaten hesabın var mı?</Text>
-            <Link href="/(auth)/sign-in" style={styles.signInLink}>
-              Giriş yap
-            </Link>
+        {bootstrap.status === 'loading' ? (
+          <View style={styles.bootstrapRow} accessibilityLiveRegion="polite">
+            <ActivityIndicator color={colors.green} />
+            <Text style={styles.bootstrapText}>Hesabın kontrol ediliyor…</Text>
           </View>
-          <Text style={styles.footer}>Özel • Yargısız • Teşhis koymaz</Text>
-        </View>
+        ) : null}
+
+        {bootstrap.status === 'error' ? (
+          <StateCard title="Hesap durumu yüklenemedi" description={bootstrap.error} tone="notice" />
+        ) : null}
+
+        {bootstrap.status !== 'loading' ? (
+          <View style={styles.actions}>
+            <Link href="/(auth)/sign-up" style={styles.primaryLink} accessibilityRole="button">
+              Hemen Başla
+            </Link>
+            <View style={styles.signInRow}>
+              <Text style={styles.signInText}>Zaten hesabın var mı?</Text>
+              <Link href="/(auth)/sign-in" style={styles.signInLink}>
+                Giriş yap
+              </Link>
+            </View>
+            <Text style={styles.footer}>Özel • Yargısız • Teşhis koymaz</Text>
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -110,6 +130,8 @@ const styles = StyleSheet.create({
   },
   statNumber: { color: colors.green, fontSize: 15, fontWeight: '800' },
   statLabel: { color: colors.inkSoft, fontSize: 12, fontWeight: '600' },
+  bootstrapRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm },
+  bootstrapText: { color: colors.inkSoft, fontSize: 14 },
   actions: { gap: spacing.md },
   primaryLink: {
     minHeight: 54,
