@@ -1,3 +1,4 @@
+import { normalizeResponseBody } from '@/features/today/response-validation';
 import { supabase } from '@/lib/supabase/client';
 
 export type TodayState = {
@@ -24,10 +25,7 @@ export async function saveTodayResponse(input: {
   responseId: string | null;
   body: string;
 }) {
-  const body = input.body.trim();
-  if (body.length < 1 || body.length > 10_000) {
-    throw new Error('Cevap 1 ile 10.000 karakter arasında olmalı.');
-  }
+  const body = normalizeResponseBody(input.body);
 
   if (input.responseId) {
     const { error } = await supabase
