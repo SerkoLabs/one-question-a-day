@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "One Question a Day",
+    "slug": "one-question-a-day",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "onequestionaday",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    }
+  }
+}
