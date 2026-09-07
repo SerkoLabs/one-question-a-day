@@ -1,17 +1,55 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useMutation } from '@tanstack/react-query';
 
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
 import { StateCard } from '@/components/StateCard';
+import { useSessionBootstrap } from '@/features/auth/session-provider';
+import { clearProtectedQueryCache } from '@/lib/query/client';
+import { supabase } from '@/lib/supabase/client';
 import { colors, radius, spacing } from '@/theme/tokens';
 
-const rows = [
-  ['Günlük hatırlatma', 'Kapalı'],
-  ['AI analizi', 'Onay gerekli'],
-  ['Zaman dilimi', 'Kurulumda seçilecek'],
-  ['Verilerim', 'Dışa aktar / hesabı sil'],
-] as const;
-
 export default function SettingsScreen() {
+  const bootstrap = useSessionBootstrap();
+  const profile = bootstrap.status === 'ready' ? bootstrap.profile : null;
+  const userId = bootstrap.status === 'ready' ? bootstrap.session.user.id : '';
+  const [timezone, setTimezone] = useState(profile?.timezone ?? '');
+  const [aiConsent, setAiConsent] = useState(false);
+
+  useEffect(() => {
+    if (profile?.timezone != null) setTimezone(profile.timezone);
+  }, [profile?.timezone]);
+
+  useEffect(() => {
+    if (!userId) return;
+    void supabase
+      .from('profiles')
+      .select('ai_analysis_consent')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => setAiConsent(Boolean(data?.ai_analysis_consent)));
+  }, [userId]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!userId || !timezone.trim()) throw new Error('Zaman dilimi boş bırakılamaz.');
+      const { error } = await supabase
+        .from('profiles')
+        .update({ timezone: timezone.trim(), ai_analysis_consent: aiConsent })
+        .eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => bootstrap.refreshProfile(),
+  });
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    await clearProtectedQueryCache();
+    router.replace('/');
+  };
+
   return (
     <Screen
       eyebrow="KONTROL SENDE"
@@ -19,16 +57,62 @@ export default function SettingsScreen() {
       description="Günlüğün ve ondan türetilen raporlar yalnızca sana ait özel veridir."
     >
       <View style={styles.group}>
-        {rows.map(([label, value], index) => (
-          <View key={label} style={[styles.row, index !== rows.length - 1 && styles.withBorder]}>
-            <View style={styles.rowCopy}>
-              <Text style={styles.rowTitle}>{label}</Text>
-              <Text style={styles.rowValue}>{value}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
+        <View style={[styles.row, styles.withBorder]}>
+          <View style={styles.rowCopy}>
+            <Text style={styles.rowTitle}>AI analizi</Text>
+            <Text style={styles.rowValue}>
+              {aiConsent ? 'Yeni cevapların dönemsel analiz için işlenebilir.' : 'Kapalı — günlük tutmaya devam edebilirsin.'}
+            </Text>
           </View>
-        ))}
+          <Switch
+            accessibilityLabel="AI analizini aç veya kapat"
+            onValueChange={setAiConsent}
+            thumbColor="#FFFFFF"
+            trackColor={{ false: colors.border, true: colors.green }}
+            value={aiConsent}
+          />
+        </View>
+
+        <View style={[styles.row, styles.withBorder]}>
+          <View style={styles.rowCopy}>
+            <Text style={styles.rowTitle}>Zaman dilimi</Text>
+            <Text style={styles.rowValue}>Geçmiş cevap tarihleri değişmez; yalnızca bundan sonraki gün sınırı etkilenir.</Text>
+            <TextInput
+              autoCapitalize="none"
+              onChangeText={setTimezone}
+              placeholder="Europe/Istanbul"
+              placeholderTextColor={colors.inkMuted}
+              style={styles.input}
+              value={timezone}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.rowCopy}>
+            <Text style={styles.rowTitle}>Günlük hatırlatma</Text>
+            <Text style={styles.rowValue}>
+              Yerel bildirim izni ve zamanlama Phase 6'da bağlanacak. Hazır olmadan sahte bir “açık” durumu göstermiyoruz.
+            </Text>
+          </View>
+        </View>
       </View>
+
+      {saveMutation.isError ? (
+        <StateCard
+          tone="notice"
+          title="Ayarlar kaydedilemedi"
+          description="Zaman diliminin geçerli bir IANA adı olduğundan ve bağlantının açık olduğundan emin ol."
+        />
+      ) : null}
+      {saveMutation.isSuccess ? (
+        <StateCard title="Ayarların kaydedildi" description="Yeni tercihler hesabına uygulandı." />
+      ) : null}
+      <PrimaryButton
+        label={saveMutation.isPending ? 'Kaydediliyor…' : 'Ayarları Kaydet'}
+        disabled={saveMutation.isPending}
+        onPress={() => saveMutation.mutate()}
+      />
 
       <StateCard
         tone="notice"
@@ -43,6 +127,8 @@ export default function SettingsScreen() {
           Ürün metrikleri yalnızca cevap verildi, rapor açıldı gibi içeriksiz olaylardan oluşacak.
         </Text>
       </View>
+
+      <PrimaryButton label="Çıkış Yap" tone="secondary" onPress={signOut} />
     </Screen>
   );
 }
@@ -55,12 +141,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  row: { flexDirection: 'row', alignItems: 'center', padding: spacing.lg, gap: spacing.md },
+  row: { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.lg, gap: spacing.md },
   withBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowCopy: { flex: 1, gap: 4 },
+  rowCopy: { flex: 1, gap: spacing.sm },
   rowTitle: { color: colors.ink, fontSize: 16, fontWeight: '700' },
-  rowValue: { color: colors.inkMuted, fontSize: 13 },
-  chevron: { color: colors.inkMuted, fontSize: 27, fontWeight: '300' },
+  rowValue: { color: colors.inkMuted, fontSize: 13, lineHeight: 19 },
+  input: {
+    minHeight: 48,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    color: colors.ink,
+    paddingHorizontal: spacing.md,
+    fontSize: 14,
+  },
   privacyCard: {
     backgroundColor: colors.greenSoft,
     borderRadius: radius.lg,
