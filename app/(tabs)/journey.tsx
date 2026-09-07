@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -77,10 +77,13 @@ export default function JourneyScreen() {
             <Link
               key={item.id}
               href={{ pathname: '/entry/[responseId]', params: { responseId: item.id } }}
-              style={styles.entryLink}
-              accessibilityRole="button"
+              asChild
             >
-              <View style={styles.entryRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${item.local_date} tarihli cevabı aç`}
+                style={({ pressed }) => [styles.entryRow, pressed && styles.entryPressed]}
+              >
                 <View style={styles.dayBadge}>
                   <Text style={styles.dayNumber}>{item.journey_day}</Text>
                   <Text style={styles.dayLabel}>gün</Text>
@@ -90,7 +93,7 @@ export default function JourneyScreen() {
                   <Text style={styles.entryMeta}>Cevabı aç • revizyon {item.source_revision}</Text>
                 </View>
                 <Text style={styles.chevron}>›</Text>
-              </View>
+              </Pressable>
             </Link>
           ))}
         </View>
@@ -122,7 +125,6 @@ const styles = StyleSheet.create({
   muted: { color: colors.inkMuted, fontSize: 13 },
   list: { gap: spacing.sm },
   sectionTitle: { color: colors.ink, fontSize: 18, fontWeight: '800', marginBottom: spacing.xs },
-  entryLink: { borderRadius: radius.md, overflow: 'hidden' },
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -133,6 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
+  entryPressed: { opacity: 0.78 },
   dayBadge: {
     width: 48,
     height: 48,
