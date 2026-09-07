@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, codex/phase-0-foundation]
+    branches:
+      - main
+      - 'codex/**'
   pull_request:
     branches: [main]
 
@@ -24,11 +26,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.0'
-          cache: npm
-          cache-dependency-path: package-lock.json
-        continue-on-error: true
 
-      - name: Resolve dependency lock for foundation
+      - name: Resolve dependency lock when absent
+        if: ${{ hashFiles('package-lock.json') == '' }}
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Install dependencies
@@ -50,7 +50,7 @@ jobs:
         run: npm run build:smoke
 
       - name: Upload generated dependency lock
-        if: always()
+        if: ${{ always() && hashFiles('package-lock.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: package-lock
