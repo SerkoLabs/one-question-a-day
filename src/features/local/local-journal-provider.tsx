@@ -3,15 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { AppState } from 'react-native';
 
 import { localJournalRepository } from './repository';
-import {
-  ensureAssignment,
-  localDateFor,
-  orderedHistory,
-  questionFor,
-  saveAnswer,
-  type JournalAnswer,
-  type LocalJournalState,
-} from './state';
+import { ensureAssignment, localDateFor, orderedHistory, questionFor, saveAnswer, type JournalAnswer, type LocalJournalState } from './state';
 
 type JournalContextValue = {
   loading: boolean;
@@ -23,7 +15,7 @@ type JournalContextValue = {
   history: JournalAnswer[];
   completeOnboarding(timezone: string): Promise<void>;
   setDraft(value: string): Promise<void>;
-  completeToday(): Promise<void>;
+  completeToday(body: string): Promise<void>;
   updateAnswer(localDate: string, body: string): Promise<void>;
   refreshDay(date?: Date): Promise<void>;
 };
@@ -40,23 +32,24 @@ export function LocalJournalProvider({ children }: PropsWithChildren) {
   }, []);
 
   const refreshDay = useCallback(async (date = new Date()) => {
+    let nextToSave: LocalJournalState | null = null;
     setState((current) => {
       if (!current) return current;
       const localDate = localDateFor(date, current.timezone);
       setToday(localDate);
-      const next = ensureAssignment(current, localDate);
-      void localJournalRepository.save(next);
-      return next;
+      nextToSave = ensureAssignment(current, localDate);
+      return nextToSave;
     });
+    if (nextToSave) await localJournalRepository.save(nextToSave);
   }, []);
 
   useEffect(() => {
-    void localJournalRepository.load().then((loaded) => {
+    void localJournalRepository.load().then(async (loaded) => {
       const localDate = localDateFor(new Date(), loaded.timezone);
       const next = ensureAssignment(loaded, localDate);
       setToday(localDate);
       setState(next);
-      return localJournalRepository.save(next);
+      await localJournalRepository.save(next);
     });
   }, []);
 
@@ -79,7 +72,6 @@ export function LocalJournalProvider({ children }: PropsWithChildren) {
       history: state ? orderedHistory(state) : [],
       completeOnboarding: async (timezone) => {
         if (!state) return;
-        localDateFor(new Date(), timezone);
         const localDate = localDateFor(new Date(), timezone);
         setToday(localDate);
         await commit(ensureAssignment({ ...state, timezone, onboardingComplete: true }, localDate));
@@ -88,9 +80,9 @@ export function LocalJournalProvider({ children }: PropsWithChildren) {
         if (!state || !today) return;
         await commit({ ...state, drafts: { ...state.drafts, [today]: draft } });
       },
-      completeToday: async () => {
+      completeToday: async (body) => {
         if (!state || !today) return;
-        await commit(saveAnswer(state, today, state.drafts[today] ?? state.answers[today]?.body ?? '', new Date().toISOString()));
+        await commit(saveAnswer(state, today, body, new Date().toISOString()));
       },
       updateAnswer: async (localDate, body) => {
         if (!state) return;
