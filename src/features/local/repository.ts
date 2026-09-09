@@ -21,9 +21,9 @@ async function parseSlot(key: string, fallback: LocalJournalState): Promise<Loca
   try {
     const raw = await secureAuthStorage.getItem(key);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as unknown;
-    const migrated = migrateState(parsed, fallback);
-    return migrated.profileId === fallback.profileId && parsed !== null ? migrated : migrated;
+    const parsed = JSON.parse(raw) as Partial<LocalJournalState> | null;
+    if (!parsed || parsed.schemaVersion !== 1 || typeof parsed.profileId !== 'string') return null;
+    return migrateState(parsed, fallback);
   } catch {
     return null;
   }

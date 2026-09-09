@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { localJournalRepository } from './repository';
@@ -24,29 +24,29 @@ const JournalContext = createContext<JournalContextValue | null>(null);
 
 export function LocalJournalProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<LocalJournalState | null>(null);
+  const stateRef = useRef<LocalJournalState | null>(null);
   const [today, setToday] = useState<string | null>(null);
 
   const commit = useCallback(async (next: LocalJournalState) => {
+    stateRef.current = next;
     setState(next);
     await localJournalRepository.save(next);
   }, []);
 
   const refreshDay = useCallback(async (date = new Date()) => {
-    let nextToSave: LocalJournalState | null = null;
-    setState((current) => {
-      if (!current) return current;
-      const localDate = localDateFor(date, current.timezone);
-      setToday(localDate);
-      nextToSave = ensureAssignment(current, localDate);
-      return nextToSave;
-    });
-    if (nextToSave) await localJournalRepository.save(nextToSave);
-  }, []);
+    const current = stateRef.current;
+    if (!current) return;
+    const localDate = localDateFor(date, current.timezone);
+    const next = ensureAssignment(current, localDate);
+    setToday(localDate);
+    await commit(next);
+  }, [commit]);
 
   useEffect(() => {
     void localJournalRepository.load().then(async (loaded) => {
       const localDate = localDateFor(new Date(), loaded.timezone);
       const next = ensureAssignment(loaded, localDate);
+      stateRef.current = next;
       setToday(localDate);
       setState(next);
       await localJournalRepository.save(next);
@@ -71,22 +71,26 @@ export function LocalJournalProvider({ children }: PropsWithChildren) {
       answer: state && today ? state.answers[today] ?? null : null,
       history: state ? orderedHistory(state) : [],
       completeOnboarding: async (timezone) => {
-        if (!state) return;
+        const current = stateRef.current;
+        if (!current) return;
         const localDate = localDateFor(new Date(), timezone);
         setToday(localDate);
-        await commit(ensureAssignment({ ...state, timezone, onboardingComplete: true }, localDate));
+        await commit(ensureAssignment({ ...current, timezone, onboardingComplete: true }, localDate));
       },
       setDraft: async (draft) => {
-        if (!state || !today) return;
-        await commit({ ...state, drafts: { ...state.drafts, [today]: draft } });
+        const current = stateRef.current;
+        if (!current || !today) return;
+        await commit({ ...current, drafts: { ...current.drafts, [today]: draft } });
       },
       completeToday: async (body) => {
-        if (!state || !today) return;
-        await commit(saveAnswer(state, today, body, new Date().toISOString()));
+        const current = stateRef.current;
+        if (!current || !today) return;
+        await commit(saveAnswer(current, today, body, new Date().toISOString()));
       },
       updateAnswer: async (localDate, body) => {
-        if (!state) return;
-        await commit(saveAnswer(state, localDate, body, new Date().toISOString()));
+        const current = stateRef.current;
+        if (!current) return;
+        await commit(saveAnswer(current, localDate, body, new Date().toISOString()));
       },
       refreshDay,
     };
