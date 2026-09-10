@@ -9,7 +9,7 @@
     "plugins": ["expo-router", "expo-secure-store"],
     "experiments": { "typedRoutes": true },
     "ios": { "supportsTablet": true },
-    "android": {},
+    "android": { "package": "com.serkolabs.onequestionaday" },
     "web": { "bundler": "metro", "output": "static" }
   }
 }
