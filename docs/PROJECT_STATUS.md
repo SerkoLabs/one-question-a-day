@@ -13,10 +13,10 @@ Last updated: 2026-09-10
 | 05 ARCHITECTURE | FALLBACK PASS | `docs/ARCHITECTURE.md`, `docs/LOCAL_FIRST_ARCHITECTURE.md` |
 | 06 DATABASE | FALLBACK PASS | future Supabase design preserved; secure local schema versioned |
 | 07 IMPLEMENTATION_PLAN | PASS | dependency-ordered plan and run reconciliation |
-| 08 Foundation | IMPLEMENTED / GATE PARTIAL | Expo/TS/lint/Jest/CI and local secure repository; commands blocked by runner |
-| 09 App shell/navigation | IMPLEMENTED / GATE PARTIAL | Welcome, short onboarding, Today, History/detail, reflection preview, settings |
-| 10 First vertical slice | IMPLEMENTED / GATE PARTIAL | launch → onboarding → question → draft → save → reopen → history → next-day engine; device smoke blocked |
-| 11 Audit #1 | FALLBACK PASS (SOURCE) | `docs/reviews/AUDIT_01.md`; three P1 findings fixed; no unresolved P0/P1 |
+| 08 Foundation | PASS | Expo SDK 57 dependency baseline, committed lockfile, strict TS, lint, Jest, Expo Doctor, CI |
+| 09 App shell/navigation | PASS | Welcome, short onboarding, Today, History/detail, reflection preview, settings; web export passes |
+| 10 First vertical slice | IMPLEMENTED / DEVICE PARTIAL | launch → onboarding → question → draft → save → reopen → history → next-day engine; device smoke pending |
+| 11 Audit #1 | FALLBACK PASS | `docs/reviews/AUDIT_01.md`; three P1 findings fixed; no unresolved P0/P1 |
 | 12 Core MVP | STOPPED BY RUN CAP | no broad expansion performed |
 
 ## Branch, PR and commits
@@ -24,10 +24,10 @@ Last updated: 2026-09-10
 - Branch: `codex/local-first-vertical-slice-audit`
 - Pull request: https://github.com/SerkoLabs/one-question-a-day/pull/1
 - `7ce51f0` — local-first Stage 10 implementation.
-- `530308d` — exact editor save and account-wall retirement.
-- `78bb7a3` — serialized/double-buffered persistence.
-- `72f9aaf` — lifecycle and Audit #1 documentation.
-- `d56dd6e` — diagnostic CI matrix and hook dependency correction.
+- `530308d`, `78bb7a3`, `147336c` — exact save and crash-safe persistence corrections.
+- `4126844`, `acc1855`, `8741c7d` — Expo SDK 57 / Jest dependency alignment.
+- `9a6b90f`, `d40b454` — strict typecheck, lint, tests and Expo Doctor fixes.
+- `56bfe88` — generated dependency lockfile committed by CI.
 
 ## Working vertical slice
 
@@ -41,17 +41,18 @@ Persisted state includes onboarding, timezone, question-set version, explicit as
 - Future Supabase/Auth/RLS artifacts remain version controlled but are not required for this slice.
 - GitHub Advanced Security secret scanning is not enabled; manual/source review found no new secret material.
 
-## Verification truth and blocker
+## Verification truth
 
-Authored tests cover stable assignment, no duplicates in one preview cycle, midnight/timezone/DST, timezone travel, draft-to-answer transition, history ordering/snapshots, and unknown-schema fallback.
+Passing GitHub Actions evidence on 2026-09-10:
+- strict TypeScript: exit 0;
+- Expo lint: exit 0;
+- unit tests: 3 suites, 14 tests passed;
+- Expo Doctor: 21/21 checks passed;
+- production web export: passed, 19 static routes;
+- dependency graph: installed from committed `package-lock.json` with the documented Expo SDK 57 Jest peer workaround.
 
-PR CI evidence:
-- two original `quality` jobs completed with failure, but the available GitHub tool did not expose step logs;
-- the replacement named matrix jobs (`typecheck`, `lint`, `unit-tests`, `expo-doctor`, `web-export`) remained queued/in-progress rather than producing conclusions;
-- automated review was requested but no review was returned.
-
-Still not verified: install/lockfile, typecheck, lint, Jest, Expo Doctor/export, Android compile, emulator/device process-kill/reopen.
+Still not verified: Android APK compile/upload and emulator/device process-kill/reopen behavior. The repository now contains an Android preview workflow and installable-debug-APK artifact configuration; its run is the active build attempt.
 
 ## Gate and stop
 
-Audit #1 has no unresolved source-level P0/P1. Per the user's cap, broad Stage 12 work is stopped. The unavoidable external blocker is an executable GitHub/build runner (and, for cloud APK, usable Expo build access). Once available, rerun PR CI, fix any surfaced defect, run Android preview build, and attach the APK/build URL.
+Audit #1 has no unresolved P0/P1. Per the user's cap, broad Stage 12 work is stopped. Remaining evidence gaps are P2: Android artifact result and physical/emulated device persistence checks.
