@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest",
-    "test:ci": "jest --ci --runInBand",
+    "test:ci": "jest --ci --runInBand --testPathIgnorePatterns=/tests/integration/",
     "test:integration": "jest tests/integration --runInBand",
     "doctor": "npx expo-doctor",
     "build:smoke": "expo export --platform web --output-dir dist-ci"
@@ -30,14 +30,15 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "7.87.0",
-    "react-native": "0.86.2",
+    "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "4.27.0",
+    "react-native-screens": "~4.26.0",
     "react-native-url-polyfill": "4.0.0",
     "react-native-web": "~0.21.0",
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "0.86.3",
     "@testing-library/react-native": "14.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
