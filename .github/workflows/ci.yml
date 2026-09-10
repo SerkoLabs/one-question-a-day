@@ -13,8 +13,23 @@ permissions:
 
 jobs:
   quality:
+    name: quality (${{ matrix.gate }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gate: typecheck
+            command: npm run typecheck
+          - gate: lint
+            command: npm run lint
+          - gate: unit-tests
+            command: npm run test:ci
+          - gate: expo-doctor
+            command: npm run doctor
+          - gate: web-export
+            command: npm run build:smoke
     env:
       EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_only_placeholder_abcdefghijklmnopqrstuvwxyz
@@ -26,6 +41,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.0'
+          cache: npm
+          cache-dependency-path: package.json
 
       - name: Resolve dependency lock when absent
         if: ${{ hashFiles('package-lock.json') == '' }}
@@ -34,26 +51,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test:ci
-
-      - name: Expo Doctor
-        run: npm run doctor
-
-      - name: Web export smoke
-        run: npm run build:smoke
-
-      - name: Upload generated dependency lock
-        if: ${{ always() && hashFiles('package-lock.json') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Run ${{ matrix.gate }}
+        run: ${{ matrix.command }}

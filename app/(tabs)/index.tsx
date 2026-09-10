@@ -14,7 +14,7 @@ export default function TodayScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setDraft(journal.draft), [journal.today]);
+  useEffect(() => setDraft(journal.draft), [journal.today, journal.draft]);
   if (!journal.question || !journal.today) return null;
 
   const change = (value: string) => {
