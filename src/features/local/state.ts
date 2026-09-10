@@ -27,18 +27,17 @@ export type LocalJournalState = {
 };
 
 export function localDateFor(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value;
   return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
 function ordinal(localDate: string): number {
-  const [year, month, day] = localDate.split('-').map(Number);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(localDate);
+  if (!match) throw new Error('Geçersiz yerel tarih.');
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
   return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
 }
 
@@ -51,12 +50,7 @@ export function stableHash(value: string): number {
   return hash >>> 0;
 }
 
-export function selectQuestion(input: {
-  profileId: string;
-  localDate: string;
-  questionSetVersion?: string;
-  questions?: readonly Question[];
-}): Question {
+export function selectQuestion(input: { profileId: string; localDate: string; questionSetVersion?: string; questions?: readonly Question[] }): Question {
   const version = input.questionSetVersion ?? QUESTION_SET_VERSION;
   const eligible = (input.questions ?? QUESTIONS)
     .filter((question) => question.active && question.eligible)
@@ -65,58 +59,30 @@ export function selectQuestion(input: {
       const bHash = stableHash(`${input.profileId}|${version}|${b.id}`);
       return aHash - bHash || a.id.localeCompare(b.id);
     });
-  if (!eligible.length) throw new Error('Aktif soru bulunamadı.');
-  return eligible[Math.abs(ordinal(input.localDate)) % eligible.length];
+  const selected = eligible[Math.abs(ordinal(input.localDate)) % eligible.length];
+  if (!selected) throw new Error('Aktif soru bulunamadı.');
+  return selected;
 }
 
 export function createInitialState(profileId: string, timezone: string): LocalJournalState {
-  return {
-    schemaVersion: LOCAL_SCHEMA_VERSION,
-    profileId,
-    onboardingComplete: false,
-    locale: 'tr',
-    timezone,
-    questionSetVersion: QUESTION_SET_VERSION,
-    assignments: {},
-    drafts: {},
-    answers: {},
-    lastObservedLocalDate: null,
-  };
+  return { schemaVersion: LOCAL_SCHEMA_VERSION, profileId, onboardingComplete: false, locale: 'tr', timezone, questionSetVersion: QUESTION_SET_VERSION, assignments: {}, drafts: {}, answers: {}, lastObservedLocalDate: null };
 }
 
 export function migrateState(raw: unknown, fallback: LocalJournalState): LocalJournalState {
   if (!raw || typeof raw !== 'object') return fallback;
   const candidate = raw as Partial<LocalJournalState>;
   if (candidate.schemaVersion !== LOCAL_SCHEMA_VERSION || typeof candidate.profileId !== 'string') return fallback;
-  return {
-    ...fallback,
-    ...candidate,
-    assignments: candidate.assignments ?? {},
-    drafts: candidate.drafts ?? {},
-    answers: candidate.answers ?? {},
-  };
+  return { ...fallback, ...candidate, assignments: candidate.assignments ?? {}, drafts: candidate.drafts ?? {}, answers: candidate.answers ?? {} };
 }
 
 export function ensureAssignment(state: LocalJournalState, localDate: string): LocalJournalState {
   if (state.assignments[localDate]) return { ...state, lastObservedLocalDate: localDate };
-  const question = selectQuestion({
-    profileId: state.profileId,
-    localDate,
-    questionSetVersion: state.questionSetVersion,
-  });
-  return {
-    ...state,
-    assignments: { ...state.assignments, [localDate]: question.id },
-    lastObservedLocalDate: localDate,
-  };
+  const question = selectQuestion({ profileId: state.profileId, localDate, questionSetVersion: state.questionSetVersion });
+  return { ...state, assignments: { ...state.assignments, [localDate]: question.id }, lastObservedLocalDate: localDate };
 }
 
 export function questionFor(state: LocalJournalState, localDate: string): Question {
-  const assignedId = state.assignments[localDate] ?? selectQuestion({
-    profileId: state.profileId,
-    localDate,
-    questionSetVersion: state.questionSetVersion,
-  }).id;
+  const assignedId = state.assignments[localDate] ?? selectQuestion({ profileId: state.profileId, localDate, questionSetVersion: state.questionSetVersion }).id;
   const question = QUESTIONS.find((item) => item.id === assignedId);
   if (!question) throw new Error('Atanmış soru bu içerik sürümünde bulunamadı.');
   return question;
@@ -128,22 +94,10 @@ export function saveAnswer(state: LocalJournalState, localDate: string, bodyInpu
   const assigned = ensureAssignment(state, localDate);
   const question = questionFor(assigned, localDate);
   const previous = assigned.answers[localDate];
-  const answer: JournalAnswer = {
-    id: previous?.id ?? `${localDate}:${question.id}`,
-    localDate,
-    questionId: question.id,
-    questionText: previous?.questionText ?? question.text,
-    questionSetVersion: previous?.questionSetVersion ?? assigned.questionSetVersion,
-    body,
-    createdAt: previous?.createdAt ?? now,
-    updatedAt: now,
-  };
-  const { [localDate]: _discarded, ...remainingDrafts } = assigned.drafts;
-  return {
-    ...assigned,
-    drafts: remainingDrafts,
-    answers: { ...assigned.answers, [localDate]: answer },
-  };
+  const answer: JournalAnswer = { id: previous?.id ?? `${localDate}:${question.id}`, localDate, questionId: question.id, questionText: previous?.questionText ?? question.text, questionSetVersion: previous?.questionSetVersion ?? assigned.questionSetVersion, body, createdAt: previous?.createdAt ?? now, updatedAt: now };
+  const remainingDrafts = { ...assigned.drafts };
+  delete remainingDrafts[localDate];
+  return { ...assigned, drafts: remainingDrafts, answers: { ...assigned.answers, [localDate]: answer } };
 }
 
 export function orderedHistory(state: LocalJournalState): JournalAnswer[] {

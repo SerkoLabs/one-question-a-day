@@ -7,7 +7,7 @@ import { colors } from '@/theme/tokens';
 export default function RootLayout() {
   return (
     <AppProviders>
-      <StatusBar style="dark" backgroundColor={colors.background} />
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,

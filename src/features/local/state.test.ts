@@ -37,9 +37,11 @@ describe('deterministic local daily journey', () => {
 
   test('draft is removed only after answer state is created', () => {
     const state = ensureAssignment({ ...createInitialState('user-a', 'Europe/Istanbul'), drafts: { '2026-09-09': 'Taslağım' } }, '2026-09-09');
-    const saved = saveAnswer(state, '2026-09-09', state.drafts['2026-09-09'], '2026-09-09T09:00:00Z');
+    const draft = state.drafts['2026-09-09'];
+    expect(draft).toBeDefined();
+    const saved = saveAnswer(state, '2026-09-09', draft ?? '', '2026-09-09T09:00:00Z');
     expect(saved.drafts['2026-09-09']).toBeUndefined();
-    expect(saved.answers['2026-09-09'].body).toBe('Taslağım');
+    expect(saved.answers['2026-09-09']?.body).toBe('Taslağım');
   });
 
   test('history is newest first and preserves question snapshots', () => {
@@ -47,8 +49,9 @@ describe('deterministic local daily journey', () => {
     state = saveAnswer(state, '2026-09-08', 'Önceki', '2026-09-08T09:00:00Z');
     state = ensureAssignment(state, '2026-09-09');
     state = saveAnswer(state, '2026-09-09', 'Bugünkü', '2026-09-09T09:00:00Z');
-    expect(orderedHistory(state).map((entry) => entry.localDate)).toEqual(['2026-09-09', '2026-09-08']);
-    expect(orderedHistory(state)[0].questionText.length).toBeGreaterThan(0);
+    const history = orderedHistory(state);
+    expect(history.map((entry) => entry.localDate)).toEqual(['2026-09-09', '2026-09-08']);
+    expect(history[0]?.questionText.length).toBeGreaterThan(0);
   });
 
   test('unknown schema data fails closed to a clean migration state', () => {
