@@ -10,44 +10,61 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  quality:
-    name: quality (${{ matrix.gate }})
+  diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - gate: typecheck
-            command: npm run typecheck
-          - gate: lint
-            command: npm run lint
-          - gate: unit-tests
-            command: npm run test:ci
-          - gate: expo-doctor
-            command: npm run doctor
-          - gate: web-export
-            command: npm run build:smoke
     env:
       EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_only_placeholder_abcdefghijklmnopqrstuvwxyz
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22.13.0'
-
-      - name: Resolve dependency lock when absent
-        if: ${{ hashFiles('package-lock.json') == '' }}
+      - name: Resolve dependency lock
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-
-      - name: Run ${{ matrix.gate }}
-        run: ${{ matrix.command }}
+      - name: Run gates and capture diagnostics
+        id: gates
+        shell: bash
+        run: |
+          set +e
+          printf '<!-- oqad-ci-diagnostics -->\n## CI diagnostics\n' > diagnostics.md
+          overall=0
+          for gate in typecheck lint test:ci doctor build:smoke; do
+            safe_name="${gate//:/-}"
+            npm run "$gate" > "$safe_name.log" 2>&1
+            code=$?
+            printf '\n### `%s` — exit %s\n```text\n' "$gate" "$code" >> diagnostics.md
+            tail -n 35 "$safe_name.log" >> diagnostics.md
+            printf '\n```\n' >> diagnostics.md
+            if [ "$code" -ne 0 ]; then overall=1; fi
+          done
+          echo "overall=$overall" >> "$GITHUB_OUTPUT"
+      - name: Publish diagnostics
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- oqad-ci-diagnostics -->';
+            const body = fs.readFileSync('diagnostics.md', 'utf8').slice(0, 60000);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.user.type === 'Bot' && comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }
+      - name: Enforce gates
+        if: ${{ steps.gates.outputs.overall != '0' }}
+        run: exit 1
