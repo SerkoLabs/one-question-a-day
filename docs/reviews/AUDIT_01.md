@@ -2,15 +2,15 @@
 
 - Audit: Audit #1 — first vertical slice
 - Scope: launch, onboarding, deterministic daily question, draft/save/reopen, history, next local day, privacy
-- Date: 2026-09-09
-- Result: FALLBACK PASS at source level; runtime/build evidence pending
+- Date: 2026-09-10
+- Result: FALLBACK PASS at source level; runtime/build evidence blocked
 - Reviewer: Notion AI fallback reviewer. Preferred Astra reviewer was unavailable.
 
 ## Executive summary
 
-The implemented slice remains centered on one question and one answer. Assignment is deterministic by profile, question-set version, and local calendar date; explicit assignments and answer snapshots prevent later drift. Drafts and answers use serialized, double-buffered SecureStore snapshots. No code in the active slice sends journal text to logs, analytics, Supabase, or AI.
+The implemented slice remains centered on one question and one answer. Assignment is deterministic by profile, question-set version, and local calendar date; explicit assignments and answer snapshots prevent later drift. Drafts and answers use serialized, double-buffered SecureStore snapshots with monotonic envelope sequences. No active code sends journal text to logs, analytics, Supabase, or AI.
 
-Two P1 risks were found during review and fixed before this report: stale context could have saved a previous editor value, and replacing a single storage snapshot could have lost the last valid state during an interrupted write. The final source has no known unresolved P0/P1. Runtime, dependency, device, and Android build evidence remain P2 external-environment gaps rather than hidden passes.
+Three P1 risks were found during review and fixed: stale context could save a previous editor value; replacing a single snapshot could lose the last valid state during an interrupted write; and one rejected write could poison all later queued writes. The final source has no known unresolved P0/P1. Runtime, dependency, device, and Android build evidence remain P2 gaps.
 
 ## Findings
 
@@ -20,57 +20,53 @@ None.
 ### P1
 
 #### P1-AUD-001 — Save used context state instead of exact editor value — RESOLVED
-- Evidence: initial Stage 10 implementation called draft persistence and completion through the same stale render closure.
-- Impact: a fast manual save could preserve an earlier draft.
-- Root cause: asynchronous React state and repository writes were treated as immediately reflected context.
-- Fix: completion now receives the exact editor body; provider mutations read a synchronous state ref; writes serialize.
-- Verification after fix: source review at `530308d` and `78bb7a3`; automated execution pending CI.
+- Impact: a fast save could preserve an earlier draft.
+- Fix: completion receives the exact editor body; provider mutations read a synchronous state ref; writes serialize.
+- Verification: source review at `530308d` and `78bb7a3`; execution pending.
 
-#### P1-AUD-002 — Interrupted secure write could replace the only valid snapshot — RESOLVED
-- Evidence: first implementation delegated directly to a chunk writer that clears old chunks before writing new chunks.
+#### P1-AUD-002 — Interrupted write could replace the only valid snapshot — RESOLVED
 - Impact: process interruption could make the journal unreadable.
-- Root cause: no transaction primitive in SecureStore.
-- Fix: inactive-slot write followed by active-pointer flip; malformed active slot falls back to previous slot.
-- Verification after fix: source review at `78bb7a3`; fault-injection device test remains P2.
+- Fix: inactive-slot envelope write followed by pointer flip; malformed active slot falls back to the newest valid sequence.
+- Verification: source review; device fault injection pending as P2.
+
+#### P1-AUD-003 — Rejected write poisoned the persistence queue — RESOLVED
+- Impact: after one storage error, every later draft/save would reject until process restart.
+- Fix: each queued write recovers the predecessor promise before writing; UI still reports the failed operation.
+- Verification: source review in the latest branch commit; executable failure-injection test pending.
 
 ### P2
 
-#### P2-AUD-001 — Automated commands and native smoke not yet executed
-- Evidence: repository has no committed lockfile; prior Actions runs were unassigned (`runner_id: 0`), and the available sandbox cannot resolve GitHub/npm hosts.
+#### P2-AUD-001 — Automated commands and native smoke are blocked
+- Evidence: initial PR quality jobs failed without exposed step output. The diagnostic matrix jobs started on 2026-09-10 but remain indefinitely in progress/queued, consistent with unavailable or unhealthy runner capacity.
 - Impact: typing, dependency compatibility, Jest, Expo export, and Android compile are not proven.
-- Minimal next step: run PR CI on an assigned runner; then run preview Android build/device smoke.
+- Minimal next step: restore an assigned GitHub runner with usable logs, then rerun PR CI and preview Android build.
 
-#### P2-AUD-002 — SecureStore fault behavior needs device verification
-- Evidence: two-slot logic is source-reviewed but process-kill/keychain/keystore behavior varies by platform.
-- Impact: edge-case recovery and reinstall semantics remain unproven.
-- Minimal next step: Android process-kill tests during typing/save and uninstall/reinstall documentation check.
+#### P2-AUD-002 — SecureStore behavior needs device verification
+- Impact: process-kill, keystore/keychain, and large-answer performance remain unproven.
+- Minimal next step: Android process-kill tests during typing/save and uninstall/reinstall behavior check.
 
 #### P2-AUD-003 — Preview library is intentionally short
 - Evidence: 14 curated Turkish questions.
-- Impact: sufficient for preview/audit but not the README's full 365-day Core MVP.
-- Minimal next step: editorially review/version the 365-item bank in Stage 12; do not bulk-generate filler.
+- Impact: adequate for preview, not the README's complete 365-day Core MVP.
+- Minimal next step: editorially review/version the full bank in Stage 12; do not bulk-generate filler.
 
 ### P3
 
-#### P3-AUD-001 — Historical edits do not yet display revision metadata
-- Impact: low; saved content remains editable and durable.
+#### P3-AUD-001 — Historical edits do not display revision metadata
 - Next step: add revision UI when sync/audit history requirements are approved.
 
 ## Checks performed
 
-- requirements coverage: Stage 10 journey represented end to end in active routes.
-- runtime: not available; explicitly not claimed.
-- tests: deterministic/date/DST/timezone/draft/history/migration tests authored; execution pending.
-- auth/security: account wall removed for preview; old auth routes redirect and active provider does not initialize Supabase.
-- database/RLS: N/A to local slice; future Supabase migrations preserved for Stage 12.
-- secrets: no new secrets; active slice has no provider credentials.
-- error/loading/empty/offline: local boot, empty history, save error, locked reflection state covered.
+- requirements coverage: Stage 10 journey represented in active routes.
+- runtime: runner unavailable; not claimed.
+- tests: deterministic/date/DST/timezone/draft/history/migration tests authored; execution blocked.
+- auth/security: account wall removed; retired auth routes redirect; active provider does not initialize Supabase.
+- database/RLS: N/A to local slice; future migrations preserved.
+- secrets: no new credentials; GitHub Advanced Security secret scan unavailable for the repository.
+- state coverage: boot, empty history, save error, completion, and locked analysis preview covered.
 - accessibility: labels/roles, scalable text, large controls, scrolling, keyboard avoidance present.
-- localization: Turkish preview; structured content supports stable versioning.
-- privacy: raw text remains in secure local storage; no content logging/analytics/AI path.
-- performance: small local state; per-keystroke secure writes serialize and require device profiling later.
-- dependencies: execution pending.
-- release policy: internal APK profile only; no store submission.
+- privacy: secure local boundary; no content logging/analytics/AI path.
+- performance/dependencies/build: blocked pending executable runner/device.
 
 ## Gate decision
 
