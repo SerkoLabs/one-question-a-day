@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - codex/local-first-vertical-slice-audit
+      - claude/apk-build-error-lgar6b
 
 permissions:
   contents: read
@@ -32,13 +33,13 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean --non-interactive
-      - name: Build installable debug APK
+      - name: Build installable release APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: one-question-a-day-preview-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
