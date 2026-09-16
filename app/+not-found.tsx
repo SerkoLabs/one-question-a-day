@@ -1,17 +1,26 @@
 import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Screen } from '@/components/Screen';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { Glyph, PrimaryButton, Screen } from '@/components';
+import { useTheme } from '@/theme/theme-provider';
 
 export default function NotFoundScreen() {
+  const theme = useTheme();
+
   return (
-    <Screen eyebrow="404" title="Bu sayfa yok" description="Bağlantı eski veya eksik olabilir." scroll={false}>
+    <Screen
+      eyebrow="404"
+      title="Bu sayfa yok"
+      description="Bağlantı eski veya eksik olabilir."
+      scroll={false}
+    >
       <View style={styles.body}>
-        <Text style={styles.symbol}>○</Text>
-        <Text style={styles.copy}>Yolculuğun kaybolmadı. Güvenli başlangıç ekranına dönebilirsin.</Text>
-        <Link href="/" style={styles.link} accessibilityRole="button">
-          Başlangıca dön
+        <Glyph symbol="🧭" tone="accent" size={84} />
+        <Text style={[styles.copy, { color: theme.inkSoft }]}>
+          Yolculuğun kaybolmadı. Buradan güvenle başlangıç ekranına dönebilirsin.
+        </Text>
+        <Link href="/" asChild>
+          <PrimaryButton label="Başlangıca dön" glyph="→" accessibilityLabel="Başlangıca dön" />
         </Link>
       </View>
     </Screen>
@@ -19,17 +28,6 @@ export default function NotFoundScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
-  symbol: { color: colors.peachInk, fontSize: 68, fontWeight: '200' },
-  copy: { color: colors.inkSoft, fontSize: 16, lineHeight: 24, textAlign: 'center', maxWidth: 340 },
-  link: {
-    backgroundColor: colors.green,
-    color: '#FFFFFF',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 15,
-    overflow: 'hidden',
-    fontSize: 15,
-    fontWeight: '800',
-  },
+  body: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
+  copy: { fontSize: 16, lineHeight: 24, textAlign: 'center', maxWidth: 340 },
 });

@@ -1,29 +1,72 @@
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Screen } from '@/components/Screen';
-import { StateCard } from '@/components/StateCard';
+import { CategoryChip, PressableCard, Screen, StateCard, StreakBadge } from '@/components';
+import { computeStats, formatLongDate } from '@/features/journey/stats';
 import { useLocalJournal } from '@/features/local/local-journal-provider';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { QUESTIONS } from '@/features/local/questions';
+import { useTheme } from '@/theme/theme-provider';
+
+/** Question category lookup by id — the question set is static, so build once. */
+const CATEGORY_BY_QUESTION = new Map(QUESTIONS.map((question) => [question.id, question.category] as const));
 
 export default function HistoryScreen() {
-  const { history } = useLocalJournal();
+  const theme = useTheme();
+  const router = useRouter();
+  const { history, today } = useLocalJournal();
+  const stats = computeStats(history, today);
+
   return (
     <Screen eyebrow="SESSİZ ARŞİVİN" title="Geçmiş" description="Eski düşüncelerin burada, olduğu gibi kalır.">
-      {!history.length ? <StateCard title="İlk cevapla başlar" description="Bugünün sorusunu kaydettiğinde tarih, soru ve cevabın burada görünecek." /> : null}
-      <View style={styles.list}>
-        {history.map((item) => (
-          <Link key={item.id} href={{ pathname: '/entry/[responseId]', params: { responseId: item.id } }} asChild>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${item.localDate} tarihli cevabı aç`} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-              <Text style={styles.date}>{item.localDate}</Text>
-              <Text style={styles.question} numberOfLines={2}>{item.questionText}</Text>
-              <Text style={styles.answer} numberOfLines={3}>{item.body}</Text>
-            </Pressable>
-          </Link>
-        ))}
-      </View>
-      <Text style={styles.note}>Kaçırılan günler boş kalır. Geriye dönük baskı veya streak cezası yoktur.</Text>
+      {stats.answeredCount > 0 ? (
+        <StreakBadge count={stats.currentStreak} activeToday={stats.activeToday} />
+      ) : null}
+
+      {history.length === 0 ? (
+        <StateCard
+          glyph="🌱"
+          title="İlk cevapla başlar"
+          description="Bugünün sorusunu kaydettiğinde tarih, soru ve cevabın burada görünecek."
+        />
+      ) : (
+        <View style={styles.list}>
+          {history.map((item, index) => {
+            const category = CATEGORY_BY_QUESTION.get(item.questionId);
+            return (
+              <PressableCard
+                key={item.id}
+                entranceDelay={Math.min(index, 6) * 70}
+                accessibilityLabel={`${formatLongDate(item.localDate)} tarihli cevabı aç`}
+                accessibilityHint="Bu güne ait cevabı açar"
+                onPress={() =>
+                  router.push({ pathname: '/entry/[responseId]', params: { responseId: item.id } })
+                }
+              >
+                <Text style={[styles.date, { color: theme.accentInk }]}>
+                  {formatLongDate(item.localDate)}
+                </Text>
+                {category ? <CategoryChip category={category} /> : null}
+                <Text style={[theme.type.title, { color: theme.ink }]} numberOfLines={2}>
+                  {item.questionText}
+                </Text>
+                <Text style={[theme.type.body, { color: theme.inkSoft }]} numberOfLines={3}>
+                  {item.body}
+                </Text>
+              </PressableCard>
+            );
+          })}
+        </View>
+      )}
+
+      <Text style={[styles.note, { color: theme.inkMuted }]}>
+        Kaçırılan günler boş kalır. Geriye dönük baskı veya streak cezası yoktur.
+      </Text>
     </Screen>
   );
 }
-const styles = StyleSheet.create({ list: { gap: spacing.md }, card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm }, pressed: { opacity: 0.72 }, date: { color: colors.peachInk, fontSize: 12, fontWeight: '800' }, question: { color: colors.ink, fontSize: 19, lineHeight: 26, fontWeight: '700' }, answer: { color: colors.inkSoft, fontSize: 15, lineHeight: 23 }, note: { color: colors.inkMuted, fontSize: 12, lineHeight: 18, textAlign: 'center' } });
+
+const styles = StyleSheet.create({
+  list: { gap: 16 },
+  date: { fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
+  note: { fontSize: 12, lineHeight: 18, textAlign: 'center' },
+});

@@ -1,7 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type ScreenProps = PropsWithChildren<{
   title?: string;
@@ -9,6 +9,8 @@ type ScreenProps = PropsWithChildren<{
   description?: string;
   right?: ReactNode;
   scroll?: boolean;
+  /** Tint used for the eyebrow label; defaults to the playful accent ink. */
+  eyebrowTone?: 'accent' | 'primary';
 }>;
 
 export function Screen({
@@ -18,19 +20,25 @@ export function Screen({
   description,
   right,
   scroll = true,
+  eyebrowTone = 'accent',
 }: ScreenProps) {
+  const theme = useTheme();
+  const eyebrowColor = eyebrowTone === 'primary' ? theme.primary : theme.accentInk;
+
   const content = (
     <View style={styles.content}>
       {(eyebrow || title || description || right) && (
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
-            {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+            {eyebrow ? <Text style={[theme.type.eyebrow, { color: eyebrowColor }]}>{eyebrow}</Text> : null}
             {title ? (
-              <Text accessibilityRole="header" style={styles.title}>
+              <Text accessibilityRole="header" style={[theme.type.h1, { color: theme.ink }]}>
                 {title}
               </Text>
             ) : null}
-            {description ? <Text style={styles.description}>{description}</Text> : null}
+            {description ? (
+              <Text style={[theme.type.bodyLg, { color: theme.inkSoft }]}>{description}</Text>
+            ) : null}
           </View>
           {right}
         </View>
@@ -40,7 +48,7 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       {scroll ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -57,46 +65,9 @@ export function Screen({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  eyebrow: {
-    color: colors.peachInk,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '700',
-    letterSpacing: -0.7,
-  },
-  description: {
-    color: colors.inkSoft,
-    fontSize: 15,
-    lineHeight: 22,
-  },
+  safeArea: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  content: { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 44, gap: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 },
+  headerCopy: { flex: 1, gap: 6 },
 });
