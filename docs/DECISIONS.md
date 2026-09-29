@@ -62,3 +62,24 @@ Reason: this reduces navigation/state complexity without changing the product pr
 The implementation follows the current Expo SDK 57 default-template baseline observed on 2026-09-07: React Native `0.87.1`, React `19.2.3`, Expo `~57.0.9`, Router `~57.0.9`, AsyncStorage `2.2.0`, SecureStore `~57.0.1` and screens `~4.27.0`.
 
 The earlier `docs/ARCHITECTURE.md` wording that says RN `0.86` is stale and must not override the verified implementation baseline. It will be corrected at the next full architecture-document synchronization pass.
+
+## ADR-010 — Release build is a signed EAS build; keystore managed by EAS
+**Status:** accepted — 2026-09-29
+
+Distribution builds are produced with EAS Build. `eas.json` defines `preview`
+(internal, signed APK for sideload/testing) and `production` (signed AAB for
+Google Play) profiles, plus `development`. App version/`versionCode` use EAS
+remote version management (`cli.appVersionSource: "remote"`).
+
+The Android signing keystore is generated and stored by EAS on the first build
+(managed credentials), so no keystore is committed to the repository. This keeps
+signing material out of git and out of the client bundle, consistent with the
+project's secrets rules.
+
+The separate `Android Preview APK` GitHub workflow (`assembleRelease` via Gradle)
+remains for CI-signed, debug-keystore preview artifacts that install without
+Metro; it is independent of the EAS profiles above.
+
+Blocker recorded in `docs/PROJECT_STATUS.md`: linking the Expo project
+(`eas init`) requires an authenticated Expo account and cannot be performed by
+the automated tools available in this environment.

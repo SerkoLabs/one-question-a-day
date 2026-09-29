@@ -56,3 +56,58 @@ Still not verified: Android APK compile/upload and emulator/device process-kill/
 ## Gate and stop
 
 Audit #1 has no unresolved P0/P1. Per the user's cap, broad Stage 12 work is stopped. Remaining evidence gaps are P2: Android artifact result and physical/emulated device persistence checks.
+
+## Stage 14 — store/release readiness (update 2026-09-29)
+
+### Shipped since Audit #1
+- **Android APK launch bug fixed.** The `Android Preview APK` workflow built a debug
+  APK, which does not embed `index.android.bundle`; on a device without Metro it
+  showed the red "Unable to load script" screen. The workflow now builds
+  `assembleRelease`, which embeds the JS bundle and assets, so the artifact runs
+  standalone. Verified: workflow run 34638640418 produced `app-release.apk`
+  (~38.7 MB) from a release build.
+- **Gamified, themed UI redesign** (PR #2, merged into
+  `codex/local-first-vertical-slice-audit` as merge commit `126d99f`):
+  - light/dark design-token system with a `ThemeProvider` (system/light/dark,
+    persisted in AsyncStorage);
+  - reusable component library (Card, Chip/CategoryChip, StatTile, ProgressBar,
+    StreakBadge, animated check/confetti, SectionTitle, Glyph) and reduced-motion
+    aware entrance/press animations;
+  - non-punitive progress stats (answered days, current/longest run, recent-day
+    window, month calendar, category breakdown) with unit tests;
+  - every screen restyled (welcome, onboarding, Today, tab bar, Geçmiş,
+    Yansımalar reflection dashboard, Ayarlar with a theme switch, entry detail,
+    404). Retired auth stubs left untouched.
+  - The product's non-clinical, no-AI-analysis promise is preserved and made
+    explicit on the reflections screen.
+
+### Verification (local, on merge head `024ea9e` / `126d99f`)
+- strict TypeScript `tsc --noEmit`: exit 0;
+- Expo lint: exit 0;
+- unit tests `test:ci`: 4 suites, 24 tests passed;
+- web export smoke `build:smoke`: passed, 19 static routes;
+- Android release APK: GitHub Actions `build-apk` success.
+- `expo-doctor`: reports a pre-existing dependency patch-version drift in the
+  committed lockfile (not introduced by this work); left untouched by explicit
+  instruction. It does not gate this branch.
+
+### EAS signed build — prepared, blocked on one owner-side step
+`eas.json` now defines `development` / `preview` (signed APK) / `production`
+(signed AAB) profiles with remote app-version management and a submit skeleton.
+EAS auto-generates and manages the Android keystore, so builds are signed.
+
+**Blocker (user-owned asset, cannot be done headlessly):** no Expo project is
+linked to this app yet — `app.json` has no `extra.eas.projectId`/`owner`, and no
+Expo MCP tool can create a project (every build/sandbox tool requires an existing
+`appId`/`appFullName`). Creating the project needs an authenticated Expo login.
+
+**Next action to produce the signed build (one-time):**
+1. `npx eas-cli@latest login` (or `eas whoami` if already logged in).
+2. `npx eas-cli@latest init` — creates the Expo project and writes
+   `owner` + `extra.eas.projectId` into `app.json`; commit and push.
+3. `npx eas-cli@latest build -p android --profile preview` for a signed APK
+   (or `--profile production` for a Play Store AAB). EAS provisions the keystore
+   automatically on the first build.
+
+Once `app.json` carries the project id, the signed build can also be triggered
+through the Expo integration without the CLI.
